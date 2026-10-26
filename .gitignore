@@ -1,0 +1,7 @@
+.env
+*.db
+.venv/
+__pycache__/
+web/.env.local
+web/node_modules
+esp32/secrets.h
