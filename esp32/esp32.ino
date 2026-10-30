@@ -9,6 +9,7 @@
 #include <string.h>
 #include <sys/time.h>
 #include "secrets.h"
+#include <HTTPClient.h>
 /* Wifi variables*/
 const char* ssid = WIFI_SSID;
 const char* password=WIFI_PASSWORD;
@@ -20,6 +21,7 @@ PubSubClient client(espClient);
 const char *ntpServer="pool.ntp.org";
 long long ts_ms;
 struct timeval tv;
+unsigned long lastPing= 0;
 /*Sensors Variables*/
 const int micPin= 34;
 int sample;
@@ -70,6 +72,7 @@ void setup() {
   }
   }
   Wire.begin();
+  healthPing();
 
   bmeStatus=bme.begin(0x76);
   lightStatus=lightMeter.begin();
@@ -80,8 +83,26 @@ void setup() {
     delay(500);
   }
   Serial.println("Time has been corrected!");
-}
+} 
+void healthPing() {
+  WiFiClientSecure *client= new WiFiClientSecure;
+  HTTPClient https;
+  Serial.println("[HTTPS] begin... \n");
+  client->setInsecure();
+  https.begin(*client, GET_HEALTH);
+  https.setTimeout(10000);
+  int httpCode= https.GET();
 
+  if (httpCode>0) {
+    Serial.println("Success");
+
+
+  } else {
+    Serial.printf("[HTTPS] GET... failed, error: %s\n", https.errorToString(httpCode).c_str());
+    }
+  https.end();
+  delete client;
+}
 void loop() {
   client.loop();
   Temp= bme.readTemperature();
@@ -129,6 +150,9 @@ void loop() {
   doc["ts_ms"]= ts_ms;
   serializeJson(doc, buffer);
   client.publish("spots/node1/reading", buffer);
-  
+  if (millis() - lastPing >= 600000) {
+    healthPing();
+    lastPing= millis();
+  }
   delay(5000);
 }
