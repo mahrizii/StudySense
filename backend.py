@@ -15,7 +15,7 @@ import httpx
 from collections import deque
 
 load_dotenv()
-NOISE_MAX=800
+NOISE_MAX=700
 TEMP_MAX=25
 TEMP_MIN=19
 HUMIDITY_MAX=60
@@ -30,9 +30,11 @@ WEIGHTS={"noise":0.4, "temp":0.25,"light":0.25,"humidity": 0.1}
 async def send_alert(text):
     try:
         async with httpx.AsyncClient(timeout=5) as http:
-            await http.post(f"https://ntfy.sh/{os.environ['NTFY_TOPIC']}", content=text)
+            r=await http.post(f"https://ntfy.sh/{os.environ['NTFY_TOPIC']}", content=text)
+            print(f"Alert sent ({r.status_code}): {text}")
     except Exception as e:
-        print(f"Alert failed: {e!r}")    
+        print(f"Alert failed: {e!r}")
+
 class Readings(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     device: str
@@ -61,9 +63,6 @@ async def mqtt_subscriber():
     state=True
     while True:
         try:
-
-
-
             async with aiomqtt.Client(os.environ["MQTT_HOST"], port=int(os.environ["MQTT_PORT"]), username=os.environ["MQTT_USERNAME"], password=os.environ["MQTT_PASSWORD"], tls_params=aiomqtt.TLSParameters(), identifier=os.environ["MQTT_CLIENT_ID"], clean_session=False) as client:
                 await client.subscribe("spots/+/reading", qos=1)
                 print("Connected to MQTT broker")
@@ -107,7 +106,7 @@ async def mqtt_subscriber():
                                     problems.append("Temperature is too low")
                                 if avg_temp is not None and avg_temp > TEMP_MAX:
                                     problems.append("Temperature is too high")
-
+                                print(f"window full: noise={avg_noise}, lux={avg_lux}, problems={problems}, state={state}")
                                 bad= len(problems)>0
                                 if bad and state:
                                     await send_alert("⚠️ " + ", ".join(problems))
