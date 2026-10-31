@@ -15,7 +15,7 @@ import httpx
 from collections import deque
 
 load_dotenv()
-NOISE_MAX=600
+NOISE_MAX=800
 TEMP_MAX=25
 TEMP_MIN=19
 HUMIDITY_MAX=60
