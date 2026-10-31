@@ -22,6 +22,7 @@ const char *ntpServer="pool.ntp.org";
 long long ts_ms;
 struct timeval tv;
 unsigned long lastPing= 0;
+
 /*Sensors Variables*/
 const int micPin= 34;
 int sample;
@@ -72,7 +73,7 @@ void setup() {
   }
   }
   Wire.begin();
-  healthPing();
+  healthPing(120000);
 
   bmeStatus=bme.begin(0x76);
   lightStatus=lightMeter.begin();
@@ -84,13 +85,13 @@ void setup() {
   }
   Serial.println("Time has been corrected!");
 } 
-void healthPing() {
+void healthPing(unsigned long healthpingtimeout) {
   WiFiClientSecure *client= new WiFiClientSecure;
   HTTPClient https;
   Serial.println("[HTTPS] begin... \n");
   client->setInsecure();
   https.begin(*client, GET_HEALTH);
-  https.setTimeout(10000);
+  https.setTimeout(healthpingtimeout);
   int httpCode= https.GET();
 
   if (httpCode>0) {
@@ -151,7 +152,7 @@ void loop() {
   serializeJson(doc, buffer);
   client.publish("spots/node1/reading", buffer);
   if (millis() - lastPing >= 600000) {
-    healthPing();
+    healthPing(10000);
     lastPing= millis();
   }
   delay(5000);

@@ -3,7 +3,7 @@ from fastapi import FastAPI, HTTPException
 import aiomqtt
 import asyncio
 from contextlib import asynccontextmanager
-from sqlmodel import Field, SQLModel, Session, create_engine, select
+from sqlmodel import Field, SQLModel, Session, create_engine, select, UniqueConstraint
 import json
 from datetime import datetime, timezone 
 from fastapi.middleware.cors import CORSMiddleware
@@ -30,6 +30,9 @@ class Readings(SQLModel, table=True):
     session_id: int | None = Field(default=None, foreign_key="sessiondata.id")
     ts_ms: int | None= Field(default=None, sa_type=BigInteger)
     received_at_ms: int | None = Field(default=None, sa_type=BigInteger)
+    __table_args__= (
+        UniqueConstraint("ts", "seq","device", name="unique_time_and_sequence")
+    )
 class SessionData(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     location: str
@@ -38,8 +41,8 @@ class SessionData(SQLModel, table=True):
 async def mqtt_subscriber():
     while True:
         try:
-            async with aiomqtt.Client(os.environ["MQTT_HOST"], port=int(os.environ["MQTT_PORT"]), username=os.environ["MQTT_USERNAME"], password=os.environ["MQTT_PASSWORD"], tls_params=aiomqtt.TLSParameters()) as client:
-                await client.subscribe("spots/+/reading")
+            async with aiomqtt.Client(os.environ["MQTT_HOST"], port=int(os.environ["MQTT_PORT"]), username=os.environ["MQTT_USERNAME"], password=os.environ["MQTT_PASSWORD"], tls_params=aiomqtt.TLSParameters(), identifier=os.environ["MQTT_CLIENT_ID"], clean_session=False) as client:
+                await client.subscribe("spots/+/reading", qos=1)
                 print("Connected to MQTT broker")
                 async for message in client.messages:
                     try:
@@ -112,16 +115,12 @@ def recent_readings(limit: int = 120, session_id: int | None = None):
 def temp_score(avg_temp):
     if avg_temp is None:
         return None
-    
     elif avg_temp <= 23 and avg_temp>= 20:
         temp_score=100
-
     elif avg_temp>23:
         temp_score=max(0,100-(20*(avg_temp-23)))
-
     else:
         temp_score=max(0,100-(20*(20-avg_temp)))
-
     return round(temp_score)
 def humidity_score(avg_humidity):
     if avg_humidity is None:
