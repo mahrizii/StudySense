@@ -32,7 +32,7 @@ class Readings(SQLModel, table=True):
     received_at_ms: int | None = Field(default=None, sa_type=BigInteger)
     __table_args__= (
         UniqueConstraint("ts", "seq","device", name="unique_time_and_sequence")
-    )
+    ,)
 class SessionData(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     location: str
