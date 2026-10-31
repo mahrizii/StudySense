@@ -11,11 +11,28 @@ import time
 from dotenv import load_dotenv 
 import os
 from sqlalchemy import BigInteger
+import httpx
+from collections import deque
+
 load_dotenv()
+NOISE_MAX=600
+TEMP_MAX=25
+TEMP_MIN=19
+HUMIDITY_MAX=60
+HUMIDITY_MIN=30
+LUX_MIN=100
+
 CORS_ORIGINS= os.environ["CORS_ORIGINS"]
 allow_origins= CORS_ORIGINS.split(",")
 engine = create_engine(os.environ["DATABASE_URL"])
 WEIGHTS={"noise":0.4, "temp":0.25,"light":0.25,"humidity": 0.1}
+
+async def send_alert(text):
+    try:
+        async with httpx.AsyncClient(timeout=5) as http:
+            await http.post(f"https://ntfy.sh/{os.environ['NTFY_TOPIC']}", content=text)
+    except Exception as e:
+        print(f"Alert failed: {e!r}")    
 class Readings(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     device: str
@@ -39,8 +56,14 @@ class SessionData(SQLModel, table=True):
     session_start: int | None
     session_end: int | None
 async def mqtt_subscriber():
+    window=deque(maxlen=4)
+    last_session_id=None
+    state=True
     while True:
         try:
+
+
+
             async with aiomqtt.Client(os.environ["MQTT_HOST"], port=int(os.environ["MQTT_PORT"]), username=os.environ["MQTT_USERNAME"], password=os.environ["MQTT_PASSWORD"], tls_params=aiomqtt.TLSParameters(), identifier=os.environ["MQTT_CLIENT_ID"], clean_session=False) as client:
                 await client.subscribe("spots/+/reading", qos=1)
                 print("Connected to MQTT broker")
@@ -51,12 +74,47 @@ async def mqtt_subscriber():
                         with Session(engine) as session:
                             session_id = session.query(SessionData.id).filter(SessionData.session_end==None).first()
                             if (session_id is not None):
-                                session_id=session_id.id
+                                session_id = session_id.id
                             else:
-                                session_id=None
+                                session_id = None
                             reading = Readings(**data, received_at=int(datetime.now(tz=timezone.utc).timestamp()), session_id=session_id, received_at_ms=received_at_ms)
+
                             session.add(reading)
                             session.commit()
+
+                            if (session_id is None):
+                                continue
+                            if session_id != last_session_id:
+                                window.clear()
+                                state=True
+                                last_session_id=session_id
+                            window.append(data)
+                            if len(window)==4:
+                                avg_lux = average([d.get("lux") for d in window])
+                                avg_temp = average([d.get("temp_c") for d in window])
+                                avg_noise = average([d.get("noise") for d in window])
+                                avg_humidity = average([d.get("humidity") for d in window])   
+                                problems=[]
+                                if  avg_noise is not None and avg_noise > NOISE_MAX:
+                                    problems.append("Noise is high")
+                                if avg_lux is not None and avg_lux< LUX_MIN:
+                                    problems.append("Light is too low")
+                                if avg_humidity is not None and avg_humidity< HUMIDITY_MIN:
+                                    problems.append("Humidity is too low")
+                                if avg_humidity is not None and avg_humidity> HUMIDITY_MAX:
+                                    problems.append("Humidity is too high")
+                                if  avg_temp is not None and avg_temp< TEMP_MIN:
+                                    problems.append("Temperature is too low")
+                                if avg_temp is not None and avg_temp > TEMP_MAX:
+                                    problems.append("Temperature is too high")
+
+                                bad= len(problems)>0
+                                if bad and state:
+                                    await send_alert("⚠️ " + ", ".join(problems))
+                                    state=False
+                                elif not bad and not state:
+                                    await send_alert("✅ Conditions are back to good")
+                                    state=True
                     except Exception as e:
                         print(f"Skipped bad message: {e!r}")
         except Exception as e:
