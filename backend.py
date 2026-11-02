@@ -32,8 +32,12 @@ async def send_alert(text):
         print(f"Alerts off, skipped: {text}")
         return False
     try:
+        headers = {}
+        token = os.environ.get("NTFY_TOKEN")
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
         async with httpx.AsyncClient(timeout=5) as http:
-            r=await http.post(f"https://ntfy.sh/{os.environ['NTFY_TOPIC']}", content=text)
+            r = await http.post(f"https://ntfy.sh/{os.environ['NTFY_TOPIC']}", content=text, headers=headers)
             print(f"Alert sent ({r.status_code}): {text}")
             return r.is_success
     except Exception as e:
@@ -65,6 +69,8 @@ async def mqtt_subscriber():
     window=deque(maxlen=4)
     last_session_id=None
     state=True
+    last_attempt = 0
+    COOLDOWN = 120  
     while True:
         try:
             async with aiomqtt.Client(os.environ["MQTT_HOST"], port=int(os.environ["MQTT_PORT"]), username=os.environ["MQTT_USERNAME"], password=os.environ["MQTT_PASSWORD"], tls_params=aiomqtt.TLSParameters(), identifier=os.environ["MQTT_CLIENT_ID"], clean_session=False) as client:
@@ -112,12 +118,15 @@ async def mqtt_subscriber():
                                     problems.append("Temperature is too high")
                                 print(f"window full: noise={avg_noise}, lux={avg_lux}, problems={problems}, state={state}")
                                 bad= len(problems)>0
-                                if bad and state:
-                                    if await send_alert("⚠️ " + ", ".join(problems)):
-                                        state=False
-                                elif not bad and not state:
-                                    if await send_alert("✅ Conditions are back to good"):
-                                        state=True
+                                if time.time() - last_attempt >= COOLDOWN:
+                                    if bad and state:
+                                        last_attempt = time.time()
+                                        if await send_alert("⚠️ " + ", ".join(problems)):
+                                            state=False
+                                    elif not bad and not state:
+                                        last_attempt = time.time()
+                                        if await send_alert("✅ Conditions are back to good"):
+                                            state=True
                     except Exception as e:
                         print(f"Skipped bad message: {e!r}")
         except Exception as e:
