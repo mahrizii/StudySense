@@ -30,14 +30,15 @@ WEIGHTS={"noise":0.4, "temp":0.25,"light":0.25,"humidity": 0.1}
 async def send_alert(text):
     if not alerts_enabled():
         print(f"Alerts off, skipped: {text}")
-        return
+        return False
     try:
         async with httpx.AsyncClient(timeout=5) as http:
             r=await http.post(f"https://ntfy.sh/{os.environ['NTFY_TOPIC']}", content=text)
             print(f"Alert sent ({r.status_code}): {text}")
+            return r.is_success
     except Exception as e:
         print(f"Alert failed: {e!r}")
-
+        return False
 class Readings(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     device: str
@@ -112,11 +113,11 @@ async def mqtt_subscriber():
                                 print(f"window full: noise={avg_noise}, lux={avg_lux}, problems={problems}, state={state}")
                                 bad= len(problems)>0
                                 if bad and state:
-                                    await send_alert("⚠️ " + ", ".join(problems))
-                                    state=False
+                                    if await send_alert("⚠️ " + ", ".join(problems)):
+                                        state=False
                                 elif not bad and not state:
-                                    await send_alert("✅ Conditions are back to good")
-                                    state=True
+                                    if await send_alert("✅ Conditions are back to good"):
+                                        state=True
                     except Exception as e:
                         print(f"Skipped bad message: {e!r}")
         except Exception as e:

@@ -227,7 +227,10 @@ export default function Home() {
     setNow(Date.now() / 1000);
     fetchActive();
     fetchAlerts();
-    const a = setInterval(fetchActive, 10_000);
+    const a = setInterval(() => {
+      fetchActive();
+      fetchAlerts();
+    }, 10_000);
     fetchNewest();
     const r = setInterval(() => {
       fetchHistory();
@@ -425,12 +428,18 @@ export default function Home() {
         </button>
 
         {/* Phone alerts toggle */}
-        <div className="flex items-center justify-between rounded-xl bg-white px-4 py-3 ring-1 ring-black/5 dark:bg-white/5 dark:ring-white/10">
+        <div
+          className={`flex items-center justify-between rounded-xl bg-white px-4 py-3 ring-1 ring-black/5 transition-opacity dark:bg-white/5 dark:ring-white/10 ${
+            recording ? "" : "opacity-50"
+          }`}
+        >
           <div className="flex flex-col">
             <span className="text-[15px] font-medium">Phone alerts</span>
             <span className="text-xs text-[#5b6577] dark:text-[#93a0b4]">
               {alertsOn === null
                 ? "Loading…"
+                : !recording
+                ? "Only active during a session"
                 : alertsOn
                 ? "Notify me when conditions turn bad"
                 : "Paused, readings still record"}
@@ -441,9 +450,9 @@ export default function Home() {
             role="switch"
             aria-checked={alertsOn ?? false}
             aria-label="Phone alerts"
-            disabled={alertsOn === null || alertsBusy}
+            disabled={!recording || alertsOn === null || alertsBusy}
             onClick={toggleAlerts}
-            className={`relative h-7 w-12 shrink-0 rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d98a1f] disabled:opacity-50 ${
+            className={`relative h-7 w-12 shrink-0 rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d98a1f] disabled:cursor-not-allowed ${
               alertsOn ? "bg-[#d98a1f]" : "bg-[#c5ccd6] dark:bg-white/15"
             }`}
           >
