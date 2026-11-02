@@ -65,7 +65,7 @@ const METRICS: { key: Metric; label: string; unit: string }[] = [
   { key: "temp_c", label: "Temperature", unit: "°C" },
   { key: "humidity", label: "Humidity", unit: "%" },
   { key: "lux", label: "Light", unit: "lx" },
-  { key: "noise", label: "Noise", unit: "rel" },
+  { key: "noise", label: "Noise", unit: "dB" },
 ];
 
 const fmt = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1));
@@ -151,6 +151,34 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(0);
+  const [alertsOn, setAlertsOn] = useState<boolean | null>(null); // null = not loaded yet
+  const [alertsBusy, setAlertsBusy] = useState(false);
+
+  async function fetchAlerts() {
+    try {
+      const res = await fetch(`${API}/alerts`);
+      if (res.ok) setAlertsOn((await res.json()).enabled);
+    } catch {
+      /* toggle just stays disabled */
+    }
+  }
+
+  async function toggleAlerts() {
+    if (alertsOn === null) return;
+    const next = !alertsOn;
+    setAlertsOn(next); // optimistic
+    setAlertsBusy(true);
+    try {
+      const res = await fetch(`${API}/alerts?enabled=${next}`, { method: "POST" });
+      if (!res.ok) throw new Error(await readError(res));
+      setAlertsOn((await res.json()).enabled);
+    } catch (e) {
+      setAlertsOn(!next); // roll back
+      setError(e instanceof TypeError ? `Can't reach the backend at ${API}.` : (e as Error).message);
+    } finally {
+      setAlertsBusy(false);
+    }
+  }
 
   async function fetchActive() {
     try {
@@ -198,6 +226,7 @@ export default function Home() {
   useEffect(() => {
     setNow(Date.now() / 1000);
     fetchActive();
+    fetchAlerts();
     const a = setInterval(fetchActive, 10_000);
     fetchNewest();
     const r = setInterval(() => {
@@ -394,6 +423,37 @@ export default function Home() {
             ? `Start at ${chosen}`
             : "Type a location"}
         </button>
+
+        {/* Phone alerts toggle */}
+        <div className="flex items-center justify-between rounded-xl bg-white px-4 py-3 ring-1 ring-black/5 dark:bg-white/5 dark:ring-white/10">
+          <div className="flex flex-col">
+            <span className="text-[15px] font-medium">Phone alerts</span>
+            <span className="text-xs text-[#5b6577] dark:text-[#93a0b4]">
+              {alertsOn === null
+                ? "Loading…"
+                : alertsOn
+                ? "Notify me when conditions turn bad"
+                : "Paused, readings still record"}
+            </span>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={alertsOn ?? false}
+            aria-label="Phone alerts"
+            disabled={alertsOn === null || alertsBusy}
+            onClick={toggleAlerts}
+            className={`relative h-7 w-12 shrink-0 rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d98a1f] disabled:opacity-50 ${
+              alertsOn ? "bg-[#d98a1f]" : "bg-[#c5ccd6] dark:bg-white/15"
+            }`}
+          >
+            <span
+              className={`absolute left-0.5 top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                alertsOn ? "translate-x-5" : "translate-x-0"
+              }`}
+            />
+          </button>
+        </div>
 
         {error && (
           <p

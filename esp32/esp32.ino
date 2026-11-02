@@ -32,10 +32,17 @@ float Pressure;
 float lux;
 bool bmeStatus;
 bool lightStatus;
-int micMax;
 int relativeNoise;
 unsigned long start;
-int micMin;
+double sumSq;
+double sum;
+double meanNoise;
+int n;
+double rms;
+double signall;
+const double FLOOR_RMS = 62.5;
+const double C = 29;
+double db;
 char buffer[512];
 Adafruit_BME280 bme;
 BH1750 lightMeter;
@@ -105,22 +112,30 @@ void healthPing(unsigned long healthpingtimeout) {
   delete client;
 }
 void loop() {
-  client.loop();
   Temp= bme.readTemperature();
   Temp= round(Temp*10)/10.0;
   Pressure= bme.readPressure();
   Pressure=round(Pressure);
   Humidity=bme.readHumidity();
   Humidity= round(Humidity);
-  micMax=0;
-  micMin=4095;
+
+  n=0;
+  sum=0;
+  sumSq=0;
   start=millis();
-  while (millis()-start<=50) {
+  while (millis()-start<=4800) {
+    n++;
     sample= analogRead(micPin);
-    if (sample > micMax) micMax=sample;
-    if (sample < micMin) micMin=sample;
-  }
-  relativeNoise= micMax-micMin;
+    sum+= sample;
+    sumSq += sample * sample;
+    if (n % 1000 == 0) client.loop();
+    }
+
+  meanNoise= sum /n;
+  rms=sqrt(max(0.0,sumSq / n- (meanNoise*meanNoise)));
+  if (rms <= 64) db = 50;
+  else db = 20 * log10(sqrt(rms*rms - FLOOR_RMS*FLOOR_RMS)) + C;
+  Serial.printf("rms=%.1f  db=%.1f\n", rms, db);
   lux = lightMeter.readLightLevel();
   lux= round(lux);
   x++;
@@ -144,7 +159,7 @@ void loop() {
     doc["lux"]= nullptr;
   }
   
-  doc["noise"]=relativeNoise;
+  doc["noise"]=round(db*10)/10;
   doc["ts"]=time(nullptr);
   gettimeofday(&tv, nullptr);
   ts_ms= ((long long)tv.tv_sec*1000)+(tv.tv_usec/1000);
@@ -155,5 +170,4 @@ void loop() {
     healthPing(10000);
     lastPing= millis();
   }
-  delay(5000);
 }

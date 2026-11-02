@@ -34,10 +34,10 @@ const FACTORS: {
   unit: string;
   rule: string;
 }[] = [
-  { key: "noise_score", avg: "avg_noise", label: "Noise", weight: 40, unit: "rel", rule: "Quietest spot scores 100, loudest scores 0" },
-  { key: "lux_score", avg: "avg_lux", label: "Light", weight: 25, unit: "lx", rule: "100 at 300 lx or brighter, less below that" },
-  { key: "temp_score", avg: "avg_temp", label: "Temperature", weight: 25, unit: "°C", rule: "100 between 20 and 23 °C, −20 per degree outside" },
-  { key: "humidity_score", avg: "avg_humidity", label: "Humidity", weight: 10, unit: "%", rule: "100 between 30 and 60 %, −2 per point outside" },
+  { key: "noise_score", avg: "avg_noise", label: "Noise", weight: 40, unit: "dB", rule: "100 at 50 dB or quieter, 0 at 70 dB or louder" },
+  { key: "lux_score", avg: "avg_lux", label: "Light", weight: 25, unit: "lx", rule: "100 at 500 lx or brighter, less below that" },
+  { key: "temp_score", avg: "avg_temp", label: "Temperature", weight: 25, unit: "°C", rule: "100 between 21 and 23 °C, −20 per degree outside" },
+  { key: "humidity_score", avg: "avg_humidity", label: "Humidity", weight: 10, unit: "%", rule: "100 between 30 and 50 %, −2 per point outside" },
 ];
 
 const fmt = (v: number | null) =>

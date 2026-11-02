@@ -15,7 +15,7 @@ import httpx
 from collections import deque
 
 load_dotenv()
-NOISE_MAX=700
+NOISE_MAX=65
 TEMP_MAX=25
 TEMP_MIN=19
 HUMIDITY_MAX=60
@@ -28,6 +28,9 @@ engine = create_engine(os.environ["DATABASE_URL"])
 WEIGHTS={"noise":0.4, "temp":0.25,"light":0.25,"humidity": 0.1}
 
 async def send_alert(text):
+    if not alerts_enabled():
+        print(f"Alerts off, skipped: {text}")
+        return
     try:
         async with httpx.AsyncClient(timeout=5) as http:
             r=await http.post(f"https://ntfy.sh/{os.environ['NTFY_TOPIC']}", content=text)
@@ -44,7 +47,7 @@ class Readings(SQLModel, table=True):
     humidity: float | None 
     pressure_hpa: float | None 
     lux: float | None
-    noise: int | None
+    noise: float | None
     received_at: int | None
     session_id: int | None = Field(default=None, foreign_key="sessiondata.id")
     ts_ms: int | None= Field(default=None, sa_type=BigInteger)
@@ -168,16 +171,36 @@ def recent_readings(limit: int = 120, session_id: int | None = None):
             q = q.filter(Readings.session_id == session_id)
         rows = q.order_by(Readings.id.desc()).limit(min(limit, 1000)).all()
         return list(reversed(rows)) 
+class AppSettings(SQLModel, table=True):
+    id: int = Field(default=1, primary_key=True)
+    alerts_enabled: bool = True
 
+def alerts_enabled() -> bool:
+    with Session(engine) as s:
+        row = s.get(AppSettings, 1)
+        return True if row is None else row.alerts_enabled
+
+@app.get("/alerts")
+def get_alerts():
+    return {"enabled": alerts_enabled()}
+
+@app.post("/alerts")
+def set_alerts(enabled: bool):
+    with Session(engine) as s:
+        row = s.get(AppSettings, 1) or AppSettings(id=1)
+        row.alerts_enabled = enabled
+        s.add(row)
+        s.commit()
+    return {"enabled": enabled}
 def temp_score(avg_temp):
     if avg_temp is None:
         return None
-    elif avg_temp <= 23 and avg_temp>= 20:
+    elif avg_temp <= 23 and avg_temp>= 21:
         temp_score=100
     elif avg_temp>23:
         temp_score=max(0,100-(20*(avg_temp-23)))
     else:
-        temp_score=max(0,100-(20*(20-avg_temp)))
+        temp_score=max(0,100-(20*(21-avg_temp)))
     return round(temp_score)
 def humidity_score(avg_humidity):
     if avg_humidity is None:
@@ -201,15 +224,16 @@ def light_score(avg_lux):
     else:
         light_score=100
     return round(light_score)
-def noise_score(avg_noise, quietest, loudest):
-    if avg_noise is None:
+def noise_score(noise):
+    if noise is None:
         return None
-    elif loudest==quietest:
+    elif noise>70:
+        noiseScore=0
+    elif noise<50:
         noiseScore=100
-        return round(noiseScore)
     else:
-        noiseScore= 100*((loudest-avg_noise)/(loudest-quietest))
-        return round(noiseScore)
+        noiseScore= 100*((70-noise)/20)
+    return round(noiseScore)
 def total_score(temp_score,light_score,noise_score,humidity_score):
     weighted_sum=0
     weigh_used=0
@@ -278,7 +302,7 @@ def ranking():
             spot["temp_score"]= temp_score(spot["avg_temp"])
             spot["humidity_score"]= humidity_score(spot["avg_humidity"])
             spot["lux_score"]= light_score(spot["avg_lux"])
-            spot["noise_score"]= noise_score(spot["avg_noise"], quietest, loudest)
+            spot["noise_score"]= noise_score(spot["avg_noise"])
             spot["score"]= total_score(spot["temp_score"],spot["lux_score"], spot["noise_score"],  spot["humidity_score"])
             spot["minutes"]= round(spot["count"]* (5/60))
         spots=sorted(spots, key=lambda x: (x['score'] is not None, x["score"] or 0),  reverse=True)
