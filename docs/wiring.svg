@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 650" width="880" height="650" font-family="Inter, Helvetica, Arial, sans-serif">
+  <rect width="880" height="650" rx="16" fill="#ffffff"/>
+  <text x="40" y="38" font-size="20" font-weight="700" fill="#172033">StudySense wiring</text>
+
+  <!-- ESP32 -->
+  <rect x="40" y="60" width="220" height="490" rx="10" fill="#172033"/>
+  <text x="150" y="100" font-size="18" font-weight="700" fill="#f2a541" text-anchor="middle">ESP32</text>
+  <text x="150" y="120" font-size="12" fill="#93a0b4" text-anchor="middle">DevKit</text>
+  <g font-size="13" fill="#eef2f7" text-anchor="end" font-family="JetBrains Mono, Menlo, monospace">
+    <text x="248" y="194">3V3</text>
+    <text x="248" y="219">GND</text>
+    <text x="248" y="244">GPIO21</text>
+    <text x="248" y="269">GPIO22</text>
+    <text x="248" y="294">GPIO34</text>
+  </g>
+  <g font-size="11" fill="#93a0b4">
+    <text x="56" y="244">SDA</text>
+    <text x="56" y="269">SCL</text>
+    <text x="56" y="294">ADC1</text>
+  </g>
+
+  <!-- Modules -->
+  <rect x="560" y="60" width="280" height="120" rx="10" fill="#5b3f8f"/>
+  <text x="820" y="92" font-size="16" font-weight="700" fill="#fff" text-anchor="end">BME280</text>
+  <text x="820" y="112" font-size="11" fill="#e3d9f5" text-anchor="end">temp · humidity · pressure</text>
+  <text x="820" y="128" font-size="11" fill="#e3d9f5" text-anchor="end">I²C 0x76</text>
+
+  <rect x="560" y="305" width="280" height="140" rx="10" fill="#2f5f9e"/>
+  <text x="820" y="337" font-size="16" font-weight="700" fill="#fff" text-anchor="end">BH1750</text>
+  <text x="820" y="357" font-size="11" fill="#d6e4f7" text-anchor="end">light (lux)</text>
+  <text x="820" y="373" font-size="11" fill="#d6e4f7" text-anchor="end">I²C 0x23</text>
+
+  <rect x="560" y="460" width="280" height="90" rx="10" fill="#2c6b4f"/>
+  <text x="820" y="490" font-size="16" font-weight="700" fill="#fff" text-anchor="end">MAX4466</text>
+  <text x="820" y="510" font-size="11" fill="#d3efe1" text-anchor="end">electret mic + amp</text>
+
+  <g font-size="12" fill="#ffffff" font-family="JetBrains Mono, Menlo, monospace">
+    <text x="572" y="89">VCC</text><text x="572" y="114">GND</text><text x="572" y="139">SCL</text><text x="572" y="164">SDA</text>
+    <text x="572" y="329">VCC</text><text x="572" y="354">GND</text><text x="572" y="379">SCL</text><text x="572" y="404">SDA</text>
+    <text x="572" y="429" fill="#a9c3e6">ADDR (unconnected)</text>
+    <text x="572" y="484">OUT</text><text x="572" y="509">GND</text><text x="572" y="534">VCC</text>
+  </g>
+
+  <g fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <!-- 3V3 (red) -->
+    <path d="M260 190 H330 M330 85 V530 M330 85 H560 M330 325 H560 M330 530 H560" stroke="#d64545"/>
+    <!-- GND (black) -->
+    <path d="M260 215 H360 M360 110 V505 M360 110 H560 M360 350 H560 M360 505 H560" stroke="#333a46"/>
+    <!-- SDA (yellow) -->
+    <path d="M260 240 H390 M390 160 V400 M390 160 H560 M390 400 H560" stroke="#e0b21b"/>
+    <!-- SCL (blue) -->
+    <path d="M260 265 H420 M420 135 V375 M420 135 H560 M420 375 H560" stroke="#3b82c4"/>
+    <!-- Mic signal (green) -->
+    <path d="M260 290 H460 V480 H560" stroke="#2f9e6a"/>
+  </g>
+
+  <!-- junction dots -->
+  <g fill="#d64545"><circle cx="330" cy="190" r="5"/><circle cx="330" cy="85" r="5"/><circle cx="330" cy="325" r="5"/><circle cx="330" cy="530" r="5"/></g>
+  <g fill="#333a46"><circle cx="360" cy="215" r="5"/><circle cx="360" cy="110" r="5"/><circle cx="360" cy="350" r="5"/><circle cx="360" cy="505" r="5"/></g>
+  <g fill="#e0b21b"><circle cx="390" cy="240" r="5"/><circle cx="390" cy="160" r="5"/><circle cx="390" cy="400" r="5"/></g>
+  <g fill="#3b82c4"><circle cx="420" cy="265" r="5"/><circle cx="420" cy="135" r="5"/><circle cx="420" cy="375" r="5"/></g>
+  <g fill="#d98a1f"><circle cx="260" cy="190" r="4"/><circle cx="260" cy="215" r="4"/><circle cx="260" cy="240" r="4"/><circle cx="260" cy="265" r="4"/><circle cx="260" cy="290" r="4"/></g>
+
+  <!-- Legend -->
+  <g font-size="12" fill="#5b6577">
+    <rect x="40" y="586" width="18" height="4" fill="#d64545"/><text x="64" y="592">3.3 V</text>
+    <rect x="130" y="586" width="18" height="4" fill="#333a46"/><text x="154" y="592">GND</text>
+    <rect x="215" y="586" width="18" height="4" fill="#e0b21b"/><text x="239" y="592">SDA (I²C data)</text>
+    <rect x="355" y="586" width="18" height="4" fill="#3b82c4"/><text x="379" y="592">SCL (I²C clock)</text>
+    <rect x="495" y="586" width="18" height="4" fill="#2f9e6a"/><text x="519" y="592">Mic analog out</text>
+    <text x="40" y="622" fill="#8a94a6">Both I²C sensors share the same two wires. Use GPIO34 (ADC1): ADC2 pins stop working while WiFi is on.</text>
+  </g>
+</svg>
