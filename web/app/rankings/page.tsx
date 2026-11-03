@@ -25,19 +25,16 @@ type Spot = {
   minutes: number;
 };
 
-// Keep these in sync with WEIGHTS and the comfort bands in backend.py.
 const FACTORS: {
   key: "noise_score" | "lux_score" | "temp_score" | "humidity_score";
   avg: "avg_noise" | "avg_lux" | "avg_temp" | "avg_humidity";
   label: string;
-  weight: number;
   unit: string;
-  rule: string;
 }[] = [
-  { key: "noise_score", avg: "avg_noise", label: "Noise", weight: 40, unit: "dB", rule: "100 at 50 dB or quieter, 0 at 70 dB or louder" },
-  { key: "lux_score", avg: "avg_lux", label: "Light", weight: 25, unit: "lx", rule: "100 at 500 lx or brighter, less below that" },
-  { key: "temp_score", avg: "avg_temp", label: "Temperature", weight: 25, unit: "°C", rule: "100 between 21 and 23 °C, −20 per degree outside" },
-  { key: "humidity_score", avg: "avg_humidity", label: "Humidity", weight: 10, unit: "%", rule: "100 between 30 and 50 %, −2 per point outside" },
+  { key: "noise_score", avg: "avg_noise", label: "Noise", unit: "dB" },
+  { key: "lux_score", avg: "avg_lux", label: "Light", unit: "lx" },
+  { key: "temp_score", avg: "avg_temp", label: "Temperature", unit: "°C" },
+  { key: "humidity_score", avg: "avg_humidity", label: "Humidity", unit: "%" },
 ];
 
 const fmt = (v: number | null) =>
@@ -198,25 +195,6 @@ export default function Rankings() {
           </section>
         )}
 
-        {/* How it works */}
-        <section className="flex flex-col gap-3 rounded-xl p-4 ring-1 ring-black/10 dark:ring-white/10">
-          <span className={`${mono.className} text-[11px] uppercase tracking-[0.2em] text-[#5b6577] dark:text-[#93a0b4]`}>
-            How the score works
-          </span>
-          <p className="text-sm text-[#5b6577] dark:text-[#93a0b4]">
-            Each factor gets a 0–100 subscore from the spot&apos;s average reading. The total is their weighted
-            average. A failed sensor is left out, not counted as zero.
-          </p>
-          <ul className="flex flex-col gap-2">
-            {FACTORS.map((f) => (
-              <li key={f.key} className="grid grid-cols-[5.5rem_2.5rem_1fr] gap-3 text-sm">
-                <span className="font-medium">{f.label}</span>
-                <span className={`${mono.className} tabular-nums text-[#d98a1f]`}>{f.weight}%</span>
-                <span className="text-[#5b6577] dark:text-[#93a0b4]">{f.rule}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
       </div>
     </main>
   );

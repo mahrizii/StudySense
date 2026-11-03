@@ -66,7 +66,7 @@ class SessionData(SQLModel, table=True):
     session_start: int | None
     session_end: int | None
 async def mqtt_subscriber():
-    window=deque(maxlen=4)
+    window=deque(maxlen=18)
     last_session_id=None
     state=True
     last_attempt = 0
@@ -95,10 +95,11 @@ async def mqtt_subscriber():
                                 continue
                             if session_id != last_session_id:
                                 window.clear()
+                                last_attempt=0
                                 state=True
                                 last_session_id=session_id
                             window.append(data)
-                            if len(window)==4:
+                            if len(window)==18:
                                 avg_lux = average([d.get("lux") for d in window])
                                 avg_temp = average([d.get("temp_c") for d in window])
                                 avg_noise = average([d.get("noise") for d in window])
@@ -216,21 +217,21 @@ def humidity_score(avg_humidity):
     if avg_humidity is None:
         return None
     
-    elif avg_humidity <= 60 and avg_humidity>= 30:
+    elif avg_humidity <= 60 and avg_humidity>= 40:
         humidity_score=100
 
     elif avg_humidity>60:
         humidity_score=max(0,100-(2*(avg_humidity-60)))
 
     else:
-        humidity_score=max(0,100-(2*(30-avg_humidity)))
+        humidity_score=max(0,100-(2*(40-avg_humidity)))
 
     return round(humidity_score)
 def light_score(avg_lux):
     if avg_lux is None:
         return None
-    elif avg_lux<300:
-        light_score=round(max(0, 100-(0.3333*(300-avg_lux))))
+    elif avg_lux<500:
+        light_score=round(max(0, 100-(0.2*(500-avg_lux))))
     else:
         light_score=100
     return round(light_score)
@@ -277,7 +278,6 @@ def ranking():
     with Session(engine) as session:
         groups={}
         spots=[]
-        avg_noise_list=[]
         q= select(SessionData, Readings).where(Readings.session_id==SessionData.id)
         rows = session.exec(q).all()
         for session_data,reading in rows:
@@ -299,15 +299,6 @@ def ranking():
             spot["avg_noise"]= average(value["noise"])
             spot["count"]=value["count"]
             spots.append(spot)
-        for spot in spots:
-            if spot["avg_noise"] is not None:
-                avg_noise_list.append(spot["avg_noise"])
-        if avg_noise_list:
-            loudest=max(avg_noise_list)
-            quietest=min(avg_noise_list)
-        else:
-            loudest=None
-            quietest=None
         for spot in spots:
             spot["temp_score"]= temp_score(spot["avg_temp"])
             spot["humidity_score"]= humidity_score(spot["avg_humidity"])

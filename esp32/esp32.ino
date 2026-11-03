@@ -41,7 +41,7 @@ int n;
 double rms;
 double signall;
 const double FLOOR_RMS = 62.5;
-const double C = 29;
+const double C = 19;
 double db;
 char buffer[512];
 Adafruit_BME280 bme;
